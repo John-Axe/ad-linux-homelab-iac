@@ -1,0 +1,20 @@
+# Vagrant
+.vagrant/
+*.log
+
+# Ansible
+ansible/*.retry
+*.retry
+
+# Secrets / local overrides
+*.vault_pass
+group_vars/**/vault.yml
+.env
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code personal overrides
+.claude/settings.local.json
