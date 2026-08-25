@@ -1,0 +1,27 @@
+---
+# site.yml — top-level playbook for the lab's Linux server fleet.
+#
+# Applies, in order:
+#   1. common      — hostname/DNS pointed at the DC, baseline packages, NTP
+#                     (chrony) — NTP skew breaks Kerberos auth, so this runs
+#                     before the domain-join step.
+#   2. domain_join — realmd/sssd join to the AD domain served by DC01.
+#
+# Run standalone against already-up boxes:
+#   ansible-playbook -i inventory.ini site.yml \
+#     -e domain_name=contoso.local -e dc_ip=10.10.10.10 \
+#     --ask-vault-pass
+#
+# Or via `vagrant up` / `vagrant provision`, which the Vagrantfile wires up
+# to run this automatically against all three Linux nodes.
+
+- name: Configure lab Linux server fleet
+  hosts: linux_servers
+  become: true
+  vars:
+    domain_name: "{{ domain_name | default('contoso.local') }}"
+    dc_ip: "{{ dc_ip | default('10.10.10.10') }}"
+
+  roles:
+    - common
+    - domain_join

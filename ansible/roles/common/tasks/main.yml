@@ -1,0 +1,60 @@
+---
+# common role: hostname/DNS pointed at the DC, baseline packages, NTP.
+#
+# NTP runs before anything domain-related: Kerberos rejects authentication
+# when client/KDC clocks drift more than ~5 minutes apart (the default
+# skew tolerance), and a fresh VM's clock is often off by more than that
+# right after boot — so this has to be right before realmd/sssd ever try
+# to talk to the DC.
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install baseline and NTP packages
+  ansible.builtin.apt:
+    name: "{{ baseline_packages }}"
+    state: present
+
+- name: Point resolv.conf at the domain controller for DNS
+  ansible.builtin.template:
+    src: resolved.conf.j2
+    dest: /etc/systemd/resolved.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-resolved
+
+- name: Set /etc/hosts entry for the domain controller
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ dc_ip }}\\s"
+    line: "{{ dc_ip }}\t{{ dc_hostname }}.{{ domain_name }}\t{{ dc_hostname }}"
+    state: present
+
+- name: Configure chrony to use the domain controller as primary NTP source
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart chrony
+
+- name: Ensure chrony is enabled and running
+  ansible.builtin.service:
+    name: chrony
+    state: started
+    enabled: true
+
+- name: Set the system hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Ensure hostname is set in /etc/hosts for localhost resolution
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^127\\.0\\.1\\.1\\s"
+    line: "127.0.1.1\t{{ inventory_hostname }}.{{ domain_name }}\t{{ inventory_hostname }}"
+    state: present

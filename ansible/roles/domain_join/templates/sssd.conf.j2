@@ -1,0 +1,23 @@
+{{ ansible_managed | default('Managed by Ansible - ad-linux-homelab-iac') }}
+
+[sssd]
+domains = {{ domain_name }}
+config_file_version = 2
+services = nss, pam
+
+[domain/{{ domain_name }}]
+ad_domain = {{ domain_name }}
+krb5_realm = {{ domain_name | upper }}
+realmd_tags = manages-system joined-with-adcli
+cache_credentials = True
+id_provider = ad
+krb5_store_password_if_offline = True
+default_shell = /bin/bash
+ldap_id_mapping = True
+use_fully_qualified_names = False
+fallback_homedir = /home/%u
+access_provider = ad
+
+# NTP correctness (see roles/common/templates/chrony.conf.j2) matters here:
+# krb5 tickets issued by the DC's KDC are rejected if this host's clock has
+# drifted past the default 5-minute skew tolerance.

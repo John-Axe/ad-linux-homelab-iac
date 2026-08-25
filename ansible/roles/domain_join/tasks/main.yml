@@ -1,0 +1,65 @@
+---
+# domain_join role: join this Ubuntu host to the AD domain served by DC01
+# via realmd/sssd. Runs after the `common` role so DNS points at the DC
+# and chrony has the clock within Kerberos's tolerance before we try to
+# discover/join the realm.
+#
+# The join account's password comes from Ansible Vault
+# ({{ vault_domain_join_password }}, see group_vars/vault.yml.example) —
+# never a literal in this file or in group_vars/all.yml.
+
+- name: Check whether host is already joined to the domain
+  ansible.builtin.command: realm list
+  register: realm_list
+  changed_when: false
+  failed_when: false
+
+- name: Discover the realm (sanity check DNS/SRV records resolve)
+  ansible.builtin.command: "realm discover {{ domain_name }}"
+  register: realm_discover
+  changed_when: false
+  failed_when: realm_discover.rc != 0
+  when: domain_name not in realm_list.stdout
+
+- name: Join the domain via realmd
+  ansible.builtin.expect:
+    command: >-
+      realm join --user={{ domain_join_user }} {{ domain_name }}
+    responses:
+      (?i)password: "{{ vault_domain_join_password }}"
+    timeout: 60
+  register: realm_join
+  when: domain_name not in realm_list.stdout
+  no_log: true
+
+- name: Configure sssd for AD domain login
+  ansible.builtin.template:
+    src: sssd.conf.j2
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart sssd
+
+- name: Allow password authentication and home directory creation on login
+  ansible.builtin.command: pam-auth-update --enable mkhomedir
+  changed_when: true
+
+- name: Permit domain admins group to use sudo without a password prompt for wheel-equivalent access
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/domain-admins
+    content: |
+      %domain\ admins@{{ domain_name }} ALL=(ALL) ALL
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Restrict domain login to specific AD groups (least privilege)
+  ansible.builtin.command: >-
+    realm permit -g "{{ lab_role }}-admins@{{ domain_name }}"
+    --realm={{ domain_name }}
+  register: realm_permit
+  changed_when: "'already' not in realm_permit.stdout"
+  failed_when: false
+  when: domain_name not in realm_list.stdout

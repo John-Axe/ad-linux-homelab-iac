@@ -1,0 +1,38 @@
+---
+# Shared lab defaults. None of these are secrets — the one value that would
+# be (the domain join account's password) is deliberately NOT here; it's
+# looked up from an Ansible Vault file at runtime. See
+# ansible/group_vars/vault.yml.example.
+
+domain_name: contoso.local
+dc_ip: 10.10.10.10
+dc_hostname: dc01
+
+# realmd/sssd need an account with permission to join computers to the
+# domain. In a real environment this should be a low-privilege
+# "join account" delegated OU-create rights, not Domain Admin.
+domain_join_user: "svc-join@{{ domain_name }}"
+
+# NTP sources: the DC (which is also authoritative for Kerberos time) first,
+# public NTP pool as a fallback for when the DC's own clock is what's off.
+ntp_servers:
+  - "{{ dc_ip }}"
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+
+baseline_packages:
+  - chrony
+  - realmd
+  - sssd
+  - sssd-tools
+  - libnss-sss
+  - libpam-sss
+  - adcli
+  - samba-common-bin
+  - oddjob
+  - oddjob-mkhomedir
+  - packagekit
+  - vim
+  - curl
+  - htop
+  - net-tools

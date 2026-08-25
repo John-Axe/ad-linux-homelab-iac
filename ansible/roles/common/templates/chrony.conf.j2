@@ -1,0 +1,18 @@
+{{ ansible_managed | default('Managed by Ansible - ad-linux-homelab-iac') }}
+#
+# chrony.conf — lab Linux servers
+#
+# The domain controller (also the Kerberos KDC and, per the DSC config in
+# dsc/dc-configuration.ps1, PDC emulator) is preferred so this box's clock
+# tracks the same time source Kerberos ticket validation checks against.
+# Public pool servers are kept as a fallback in case the DC itself is the
+# one that's drifted.
+
+{% for server in ntp_servers %}
+server {{ server }} iburst{% if server == dc_ip %} prefer{% endif %}
+
+{% endfor %}
+driftfile /var/lib/chrony/chrony.drift
+makestep 1.0 3
+rtcsync
+logdir /var/log/chrony

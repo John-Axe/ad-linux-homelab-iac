@@ -1,0 +1,14 @@
+---
+# Template for the Ansible Vault file that holds the domain-join account's
+# password. Copy this to vault.yml, fill in the real value, then encrypt it:
+#
+#   cp group_vars/vault.yml.example group_vars/vault.yml
+#   $EDITOR group_vars/vault.yml   # set vault_domain_join_password
+#   ansible-vault encrypt group_vars/vault.yml
+#
+# group_vars/vault.yml is gitignored (see .gitignore: group_vars/**/vault.yml)
+# so the encrypted file — and definitely not a plaintext one — is never
+# committed. domain_join's tasks reference {{ vault_domain_join_password }},
+# never a literal password.
+
+vault_domain_join_password: "CHANGE_ME_and_run_ansible-vault_encrypt"

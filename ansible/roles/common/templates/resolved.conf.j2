@@ -1,0 +1,9 @@
+{{ ansible_managed | default('Managed by Ansible - ad-linux-homelab-iac') }}
+#
+# resolved.conf — point DNS at DC01's AD-integrated zone so this host can
+# resolve the domain's SRV records (required for realmd/sssd discovery)
+# and other lab hosts by name.
+
+[Resolve]
+DNS={{ dc_ip }}
+Domains=~{{ domain_name }}
